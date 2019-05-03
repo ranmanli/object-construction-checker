@@ -7,3 +7,6 @@ build
 # Ignore IntelliJ and emacs files
 .idea
 *~
+
+# Ignore Maven build output directory
+tests/guice/target
