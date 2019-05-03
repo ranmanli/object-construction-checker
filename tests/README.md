@@ -1,6 +1,7 @@
-This directory contains the various test suites for the unsafe builder checker.
+This directory contains tests for the typesafe builder checker.
 
 Each test suite is meant to reflect a particular application domain. The test suites are:
-* "basic": generic tests to make sure the typechecker is working as intended. These don't reflect an application domain.
-
-To run the guice example use `mvn compile` followed by `mvn exec:java -Dexec.mainClass="Main"`.
+* `basic`: generic tests to make sure the typechecker is working as intended. These don't reflect an application domain.
+* `cve`: AWS SDK?
+* `guice`: [Google Guice dependency injection framework](https://github.com/google/guice)
+* `lombok`: [Lombok code generator](https://github.com/rzwitserloot/lombok)
