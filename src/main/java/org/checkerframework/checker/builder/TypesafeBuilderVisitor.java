@@ -1,16 +1,23 @@
 package org.checkerframework.checker.builder;
 
 import com.sun.source.tree.AnnotationTree;
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.tree.VariableTree;
 import org.checkerframework.checker.builder.qual.CalledMethodsPredicate;
+import org.checkerframework.checker.builder.qual.ReturnsReceiver;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
 import org.checkerframework.framework.source.Result;
+import org.checkerframework.javacutil.AnnotationBuilder;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.TreeUtils;
 
 import javax.lang.model.element.AnnotationMirror;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class TypesafeBuilderVisitor extends BaseTypeVisitor<TypesafeBuilderAnnotatedTypeFactory> {
     /**
@@ -18,6 +25,7 @@ public class TypesafeBuilderVisitor extends BaseTypeVisitor<TypesafeBuilderAnnot
      */
     public TypesafeBuilderVisitor(final BaseTypeChecker checker) {
         super(checker);
+        System.out.println("visitor was created");
     }
 
     /**

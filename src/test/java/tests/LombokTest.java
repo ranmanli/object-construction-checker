@@ -30,8 +30,8 @@ public class LombokTest {
 
     private final List<File> testFiles;
 
-    private final String[] processors = {"lombok.launch.AnnotationProcessorHider$AnnotationProcessor",
-            "org.checkerframework.checker.builder.TypesafeBuilderChecker"};
+    private final String[] processors = {"lombok.launch.AnnotationProcessorHider$AnnotationProcessor"};//,
+           // "org.checkerframework.checker.builder.TypesafeBuilderChecker"};
 
     public LombokTest(List<File> testFiles) {
         this.testFiles = testFiles;
@@ -39,7 +39,7 @@ public class LombokTest {
 
     @Test
     public void run() {
-        boolean shouldEmitDebugInfo = TestUtilities.getShouldEmitDebugInfo();
+        boolean shouldEmitDebugInfo = true; //TestUtilities.getShouldEmitDebugInfo();
         List<String> customizedOptions = Arrays.asList(checkerOptions);
         List<String> processorNames = Arrays.asList(processors);
         TestConfiguration config =

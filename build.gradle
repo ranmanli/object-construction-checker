@@ -35,7 +35,8 @@ dependencies {
     // For CVE tests
     testCompile 'com.amazonaws:aws-java-sdk-ec2'
 
-    // For Lombok tests
+    // For Lombok automation and tests
+    implementation 'org.projectlombok:lombok:1.18.8'
     testCompile 'org.projectlombok:lombok:1.18.8'
 }
 
