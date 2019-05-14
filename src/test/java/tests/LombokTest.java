@@ -30,8 +30,8 @@ public class LombokTest {
 
     private final List<File> testFiles;
 
-    private final String[] processors = {"lombok.launch.AnnotationProcessorHider$AnnotationProcessor"};//,
-           // "org.checkerframework.checker.builder.TypesafeBuilderChecker"};
+    private final String[] processors = {"lombok.launch.AnnotationProcessorHider$AnnotationProcessor",
+           "org.checkerframework.checker.builder.TypesafeBuilderChecker"};
 
     public LombokTest(List<File> testFiles) {
         this.testFiles = testFiles;
