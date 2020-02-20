@@ -60,8 +60,8 @@ If your project has subprojects or you need other customizations, see the docume
       extraJavacArgs = ['-AsuppressWarnings=type.anno.before']
   }
   dependencies {
-      checkerFramework 'net.sridharan.objectconstruction:object-construction-checker:0.1.6'
-      implementation 'net.sridharan.objectconstruction:object-construction-qual:0.1.6'
+      checkerFramework 'net.sridharan.objectconstruction:object-construction-checker:0.1.7'
+      implementation 'net.sridharan.objectconstruction:object-construction-qual:0.1.7'
   }
   ```
 
@@ -211,6 +211,10 @@ passed to Lombok's `@Builder` annotation), then the return type of that method i
 the same `@CalledMethods` annotation as the receiver of `build()`, using the same rules as above.
 * A `@This` annotation is placed on the return type of each setter in the builder's implementation.
 
+You can disable the framework supports by specifying them in a comma-separated list to the 
+command-line flag `disableFrameworkSupports`.  For example, to disable both Lombok and AutoValue supports,
+use `-AdisableFrameworkSupports=AutoValue,Lombok` . 
+ 
 If you overwrite the definition of any of these methods (for example, by adding your own setters to
 a Lombok builder), you may need to write the annotations manually.
 

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,6 +17,11 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import org.checkerframework.checker.builder.qual.ReturnsReceiver;
+import org.checkerframework.checker.framework.FrameworkSupportUtils;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.objectconstruction.framework.AutoValueSupport;
 import org.checkerframework.checker.objectconstruction.framework.FrameworkSupport;
 import org.checkerframework.checker.objectconstruction.framework.LombokSupport;
@@ -64,6 +70,20 @@ public class ObjectConstructionAnnotatedTypeFactory extends BaseAnnotatedTypeFac
   private Collection<FrameworkSupport> frameworkSupports;
 
   /**
+   * Lombok has a flag to generate @CalledMethods annotations, but they used the old package name,
+   * so we maintain it as an alias.
+   */
+  private static final String OLD_CALLED_METHODS =
+      "org.checkerframework.checker.builder.qual.CalledMethods";
+
+  /**
+   * Lombok also generates an @NotCalledMethods annotation, which we have no support for. We
+   * therefore treat it as top.
+   */
+  private static final String OLD_NOT_CALLED_METHODS =
+      "org.checkerframework.checker.builder.qual.NotCalledMethods";
+
+  /**
    * Default constructor matching super. Should be called automatically.
    *
    * @param checker the checker associated with this type factory
@@ -73,13 +93,27 @@ public class ObjectConstructionAnnotatedTypeFactory extends BaseAnnotatedTypeFac
     TOP = AnnotationBuilder.fromClass(elements, CalledMethodsTop.class);
     BOTTOM = AnnotationBuilder.fromClass(elements, CalledMethodsBottom.class);
 
+    EnumSet<FrameworkSupportUtils.Framework> frameworkSet =
+        FrameworkSupportUtils.getFrameworkSet(
+            checker.getOption(ReturnsRcvrChecker.DISABLED_FRAMEWORK_SUPPORTS));
     frameworkSupports = new ArrayList<FrameworkSupport>();
-    frameworkSupports.add(new AutoValueSupport(this));
-    frameworkSupports.add(new LombokSupport(this));
+
+    for (FrameworkSupportUtils.Framework framework : frameworkSet) {
+      switch (framework) {
+        case AUTO_VALUE:
+          frameworkSupports.add(new AutoValueSupport(this));
+          break;
+        case LOMBOK:
+          frameworkSupports.add(new LombokSupport(this));
+          break;
+      }
+    }
 
     this.useValueChecker = checker.hasOption(ObjectConstructionChecker.USE_VALUE_CHECKER);
     this.collectionsSingletonList =
         TreeUtils.getMethod("java.util.Collections", "singletonList", 1, getProcessingEnv());
+    addAliasedAnnotation(OLD_CALLED_METHODS, CalledMethods.class, true);
+    addAliasedAnnotation(OLD_NOT_CALLED_METHODS, TOP);
     this.postInit();
   }
 
@@ -133,7 +167,17 @@ public class ObjectConstructionAnnotatedTypeFactory extends BaseAnnotatedTypeFac
     AnnotatedTypeMirror methodATm = rrATF.getAnnotatedType(methodEle);
     AnnotatedTypeMirror rrType =
         ((AnnotatedTypeMirror.AnnotatedExecutableType) methodATm).getReturnType();
-    return rrType != null && rrType.hasAnnotation(This.class);
+    return (rrType != null && rrType.hasAnnotation(This.class))
+        || hasOldReturnsReceiverAnnotation(tree);
+  }
+
+  /**
+   * Continue to trust but not check the old {@link
+   * org.checkerframework.checker.builder.qual.ReturnsReceiver} annotation, for
+   * backwards-compatibility.
+   */
+  private boolean hasOldReturnsReceiverAnnotation(MethodInvocationTree tree) {
+    return this.getDeclAnnotation(TreeUtils.elementFromUse(tree), ReturnsReceiver.class) != null;
   }
 
   /**
@@ -406,13 +450,22 @@ public class ObjectConstructionAnnotatedTypeFactory extends BaseAnnotatedTypeFac
       }
 
       if (AnnotationUtils.areSameByClass(subAnno, CalledMethodsPredicate.class)) {
+        if (AnnotationUtils.areSameByClass(superAnno, CalledMethodsPredicate.class)) {
+          // Permit this only if the predicates are identical, to avoid complicated
+          // predicate equivalence calculation. Good enough in practice.
+          String predicate1 =
+              AnnotationUtils.getElementValue(superAnno, "value", String.class, false);
+          String predicate2 =
+              AnnotationUtils.getElementValue(subAnno, "value", String.class, false);
+          return predicate1.equals(predicate2);
+        }
         return false;
       }
 
-      Set<String> subVal =
+      List<String> subVal =
           AnnotationUtils.areSame(subAnno, TOP)
-              ? Collections.emptySet()
-              : new LinkedHashSet<>(getValueOfAnnotationWithStringArgument(subAnno));
+              ? Collections.emptyList()
+              : getValueOfAnnotationWithStringArgument(subAnno);
 
       if (AnnotationUtils.areSameByClass(superAnno, CalledMethodsPredicate.class)) {
         // superAnno is a CMP annotation, so we need to evaluate the predicate
@@ -444,8 +497,37 @@ public class ObjectConstructionAnnotatedTypeFactory extends BaseAnnotatedTypeFac
     return element.getAnnotation(annotClass) != null;
   }
 
+  @Override
+  protected Set<Class<? extends Annotation>> createSupportedTypeQualifiers() {
+    return getBundledTypeQualifiers(
+        CalledMethods.class,
+        CalledMethodsBottom.class,
+        CalledMethodsPredicate.class,
+        CalledMethodsTop.class);
+  }
+
   private boolean hasAnnotation(Element element, String annotName) {
     return element.getAnnotationMirrors().stream()
         .anyMatch(anm -> AnnotationUtils.areSameByName(anm, annotName));
+  }
+
+  /**
+   * Returns the annotation type mirror for the type of {@code expressionTree} with default
+   * annotations applied. As types relevant to object construction checking are rarely used inside
+   * generics, this is typically the best choice for type inference.
+   */
+  @Override
+  public @Nullable AnnotatedTypeMirror getDummyAssignedTo(ExpressionTree expressionTree) {
+    TypeMirror type = TreeUtils.typeOf(expressionTree);
+    if (type.getKind() != TypeKind.VOID) {
+      AnnotatedTypeMirror atm = type(expressionTree);
+      addDefaultAnnotations(atm);
+      return atm;
+    }
+    return null;
+  }
+
+  Collection<FrameworkSupport> getFrameworkSupports() {
+    return frameworkSupports;
   }
 }

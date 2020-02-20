@@ -18,10 +18,16 @@ import org.checkerframework.framework.source.SuppressWarningsKeys;
  * objects from being instantiated.
  */
 @SuppressWarningsKeys({"builder", "object.construction", "objectconstruction"})
-@SupportedOptions(ObjectConstructionChecker.USE_VALUE_CHECKER)
+@SupportedOptions({
+  ObjectConstructionChecker.USE_VALUE_CHECKER,
+  ObjectConstructionChecker.COUNT_FRAMEWORK_BUILD_CALLS,
+  ReturnsRcvrChecker.DISABLED_FRAMEWORK_SUPPORTS
+})
 public class ObjectConstructionChecker extends BaseTypeChecker {
 
   public static final String USE_VALUE_CHECKER = "useValueChecker";
+
+  public static final String COUNT_FRAMEWORK_BUILD_CALLS = "countFrameworkBuildCalls";
 
   @Override
   protected LinkedHashSet<Class<? extends BaseTypeChecker>> getImmediateSubcheckerClasses() {
@@ -118,7 +124,17 @@ public class ObjectConstructionChecker extends BaseTypeChecker {
         "This finalizer cannot be invoked, because the following methods have not been called: %s\n");
     messages.setProperty(
         "predicate.invalid",
-        "An unparseable predicate was found in an annotation. Predicates must be produced by this grammar: S → method name | (S) | S && S | S || S. The message from the evaluator was: %s \\n");
+        "An unparseable predicate was found in an annotation. Predicates must be produced by this grammar: S --> method name | (S) | S && S | S || S. The message from the evaluator was: %s \\n");
     return messages;
+  }
+
+  int numBuildCalls = 0;
+
+  @Override
+  public void typeProcessingOver() {
+    if (getBooleanOption(COUNT_FRAMEWORK_BUILD_CALLS)) {
+      System.out.printf("Found %d build() method calls.\n", numBuildCalls);
+    }
+    super.typeProcessingOver();
   }
 }
